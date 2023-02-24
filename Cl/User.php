@@ -158,18 +158,20 @@ class Cl_User
 		$IdUsuario = $_SESSION['IdUsuario'];
 		$Rango = $_SESSION['IdTipoUsuario'];
 		$FRM="";
-		if($Rango==1)
+		if($Rango==1 or $Rango==2)
 		{
-			$query="SELECT P.*,D.*,EP.NomEstatus FROM Prospectos P 
+			$query="SELECT P.*,D.*,O.Observacion,EP.NomEstatus FROM Prospectos P 
 				LEFT JOIN EstatusProspectos EP ON P.IdEstatus=EP.IdEstatus 
-				LEFT JOIN Domicilio D ON P.IdProspecto=D.IdProspecto";
+				LEFT JOIN Domicilio D ON P.IdProspecto=D.IdProspecto
+				LEFT JOIN Observaciones O ON O.IdProspecto=D.IdProspecto";
 		}
 		else
 		{
-			$query="SELECT P.*,D.*,EP.NomEstatus FROM Prospectos P 
+			$query="SELECT P.*,D.*,O.Observacion,EP.NomEstatus FROM Prospectos P 
 				LEFT JOIN EstatusProspectos EP ON P.IdEstatus=EP.IdEstatus 
 				LEFT JOIN Domicilio D ON P.IdProspecto=D.IdProspecto
-				WHERE P.IdUsuario IN ($IdUsuario)";
+				LEFT JOIN Observaciones O ON O.IdProspecto=D.IdProspecto
+				where P.IdUsuario in ($IdUsuario)";
 		}
 		
 		$result = sqlsrv_query($this->_con, $query);
@@ -180,8 +182,11 @@ class Cl_User
 		            	<td>'.$row['Nombre'].'</td>
 		            	<td>'.$row['ApePaterno'].'</td>
 		            	<td>'.$row['ApeMaterno'].'</td>
-		            	<td>'.$row['NomEstatus'].'</td>
-		            	<td><button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#Prospecto_'.$IdProspecto.'">
+		            	<td>'.$row['NomEstatus'].'</td>';
+
+		            	if ($Rango==1 or $Rango==3) 
+		            	{
+		            		$FRM.= '<td><button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#Prospecto_'.$IdProspecto.'">
 							  VER
 							</button>
 
@@ -270,7 +275,7 @@ class Cl_User
 							        		';
 							        		IF($row['IdEstatus']==3){$FRM.= '
 							        		<div class="col-md-12">
-							        			<b>Opservacion: </b>'.$row['Celular'].'
+							        			<b>Opservacion: </b>'.$row['Observacion'].'
 							        		</div>';
 							        		}
 							        		$FRM.= '</div>
@@ -281,8 +286,205 @@ class Cl_User
 							    </div>
 							  </div>
 							</div>
-							</td>
-		        	</tr>';
+							</td>';
+		            	}
+		            	elseif ($Rango==1 or $Rango==2) 
+		            	{
+		            		$FRM.= '<td><a class="btn btn-primary" href="./EvaluarProspecto.php">Evaluar</a></td>';
+		            	}
+
+		            	
+
+		        	$FRM.= '</tr>';
+		}
+		return $FRM;
+	}
+
+
+	public function Evaluar()
+	{
+		$Entrante= $_POST['Autorizar'];
+		$fileExt=explode('_', $Entrante);
+		$IdProspecto=$fileExt[0];
+		$Estatus=$fileExt[1];
+		$queryEstatus="update prospectos set IdEstatus=$Estatus where IdProspecto in ($IdProspecto)";
+
+
+		if(sqlsrv_query($this->_con, $queryEstatus))
+		{
+
+			if($Estatus==3)
+			{
+				$observacion= $_POST['observacion'];
+				$IdUsuario = $_SESSION['IdUsuario'];
+				$queryobservacion="INSERT INTO Observaciones (Idprospecto,IdUsuario,Observacion) VALUES ($IdProspecto,$IdUsuario,'$observacion')";
+
+				if(!sqlsrv_query($this->_con, $queryobservacion))
+				{
+					sqlsrv_close($this->_con);
+					print "<script>alert(\"ERROR #318 .\");window.location='EvaluarProspecto.php?P=$IdProspecto';</script>";
+				}
+				
+			}
+		}
+		else
+		{
+			sqlsrv_close($this->_con);
+			print "<script>alert(\"ERROR #311 .\");window.location='EvaluarProspecto.php?P=$IdProspecto';</script>";
+		}
+		sqlsrv_close($this->_con);
+		print "<script>alert(\"ACTUALIZACIÓN DE ESTATUS CORRECTO.\");window.location='EvaluarProspecto.php?P=$IdProspecto';</script>";
+	}
+
+	public function DAtosGeneralesEvaluacion($IdProspecto)
+	{
+		$IdUsuario = $_SESSION['IdUsuario'];
+		$Rango = $_SESSION['IdTipoUsuario'];
+		$FRM="";
+		$Id = $IdProspecto;
+		if($Rango==1 or $Rango==2)
+		{
+			$query="SELECT P.*,D.*,O.Observacion,EP.NomEstatus FROM Prospectos P 
+				LEFT JOIN EstatusProspectos EP ON P.IdEstatus=EP.IdEstatus 
+				LEFT JOIN Domicilio D ON P.IdProspecto=D.IdProspecto
+				LEFT JOIN Observaciones O ON O.IdProspecto=D.IdProspecto
+				where P.IdProspecto in ($Id)";
+		}
+		else
+		{
+			print "<script>alert(\"NO TIENES PERMISO PARA ESTAR EN EST PAGINA .\");window.location='logout.php';</script>";
+		}
+		
+		$result = sqlsrv_query($this->_con, $query);
+        $row = sqlsrv_fetch_array( $result, SQLSRV_FETCH_ASSOC);
+
+        	$IdProspecto= $row['IdProspecto'];
+			 $FRM.= '<div class="form-control" style="margin-top: 1%;">
+							      	Datos Principales
+							      		<div class="row">
+            								<div class="col-md-12">
+							        			<b>Nombre: </b>'.$row['Nombre'].'
+							        		</div>
+							        		<div class="col-md-12">
+							        			<b>Primer Apellido: </b>'.$row['ApePaterno'].'
+							        		</div>
+							        		<div class="col-md-12">
+							        			<b>Segundo Apellido: </b>'.$row['ApeMaterno'].'
+							        		</div>
+							        	</div>
+							        </div>
+							        <div class="form-control" style="margin-top: 1%;">
+							      	Domicilio
+							      		<div class="row">
+            								<div class="col-md-12">
+							        			<b>Calle: </b>'.$row['Calle'].'
+							        		</div>
+							        		<div class="col-md-12">
+							        			<b>Numero de casa: </b>'.$row['NumeroCasa'].'
+							        		</div>
+							        		<div class="col-md-12">
+							        			<b>Colonia: </b>'.$row['Colonia'].'
+							        		</div>
+							        		<div class="col-md-12">
+							        			<b>Codigo Postal: </b>'.$row['CP'].'
+							        		</div>
+							        </div>
+							      </div>
+							      <div class="form-control" style="margin-top: 1%;">
+							      	Datos Generales
+							      		<div class="row">
+            								<div class="col-md-12">
+							        			<b>RFC: </b>'.$row['RFC'].'
+							        		</div>
+							        		<div class="col-md-12">
+							        			<b>Numero de Celular: </b>'.$row['Celular'].'
+							        		</div>
+							        		<div class="col-md-12">
+							        			<b>Documentos: </b><br>';
+
+							        			$RegDocQ="SELECT COUNT(*) AS RegistroDoc  FROM Documentos where IdProspecto in ($IdProspecto)";
+							        			$Regresult = sqlsrv_query($this->_con, $RegDocQ);	
+							        			$Reg = sqlsrv_fetch_array( $Regresult, SQLSRV_FETCH_ASSOC);
+							        		if($Reg['RegistroDoc']!=0)
+							        		{
+							        			$DocQ="SELECT IdDocumento,IdProspecto,NombreArchivo  FROM Documentos where IdProspecto in ($IdProspecto)";
+							        			// print "<script>alert(\"$DocQ .\");window.location='Prospecto.php';</script>";
+
+												$result = sqlsrv_query($this->_con, $DocQ);		
+													
+										        while($Doc = sqlsrv_fetch_array( $result, SQLSRV_FETCH_ASSOC)) 
+										        {
+										        	$NombreCompletoDocumento= $Doc['NombreArchivo'];
+							        				$FRM.= '<a href="./docs/'.$NombreCompletoDocumento.'" target="_blank">'. $NombreCompletoDocumento.'</a><br>';
+							        			}
+						        			}else
+						        			{
+						        				$FRM.='Sin Documentos';
+						        			}
+
+							        		$FRM.= '</div>';
+							        		
+							        $FRM.= '</div>
+							      </div>
+							      <div class="form-control" style="margin-top: 1%;">
+							      	Adicional
+							      		<div class="row">
+            								<div class="col-md-12">
+							        			<b>Estatus: </b>'.$row['NomEstatus'].'
+							        		</div>
+							        		';
+							        		IF($row['IdEstatus']==3){$FRM.= '
+							        		<div class="col-md-12">
+							        			<b>Opservacion: </b>'.$row['Observacion'].'
+							        		</div>';
+							        		}
+							    $FRM.= '</div></div>';
+
+
+		return $FRM;
+	}
+
+	public function EvalucionProspecto()
+	{
+		$IdProspecto= $_POST['Evaluacion'];
+
+		//print "<script>alert(\"ID: $IdProspecto.\");window.location='Evaluacion.php';</script>";
+		header('location: ./EvaluarProspecto.php?P='.$IdProspecto);
+
+	}
+
+	public function DatosProspectoEvaluacion()
+	{
+		$IdUsuario = $_SESSION['IdUsuario'];
+		$Rango = $_SESSION['IdTipoUsuario'];
+		$FRM="";
+		if($Rango==1 or $Rango==2)
+		{
+			$query="SELECT P.*,D.*,EP.NomEstatus FROM Prospectos P 
+				LEFT JOIN EstatusProspectos EP ON P.IdEstatus=EP.IdEstatus 
+				LEFT JOIN Domicilio D ON P.IdProspecto=D.IdProspecto";
+		}
+
+		
+		$result = sqlsrv_query($this->_con, $query);
+        while( $row = sqlsrv_fetch_array( $result, SQLSRV_FETCH_ASSOC) ) {
+
+        	$IdProspecto= $row['IdProspecto'];
+      		$FRM.= '<tr>
+		            	<td>'.$row['Nombre'].'</td>
+		            	<td>'.$row['ApePaterno'].'</td>
+		            	<td>'.$row['ApeMaterno'].'</td>
+		            	<td>'.$row['NomEstatus'].'</td>';
+
+		            	if ($Rango==1 or $Rango==2) 
+		            	{
+		            		$FRM.= '<td style="text-align: center"><button class="btn btn-info"value="'.$IdProspecto.'" name="Evaluacion" type="submit">Evaluacion</button>
+		            			</td>';
+		            	}
+
+		            	
+
+		        	$FRM.= '</tr>';
 		}
 		return $FRM;
 	}

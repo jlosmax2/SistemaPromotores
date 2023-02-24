@@ -10,7 +10,7 @@ if($_SESSION['Privilegios']==3 or $_SESSION['Privilegios']==1){
 }
 else
 {
-	header('location: index.php');
+	header('location: logout.php');
 }
 
 
