@@ -1,0 +1,14 @@
+* {
+  margin: 0;
+}
+body {
+  height: 100%;
+  background-color: #EEEEEE;
+}
+.wrapper {
+  min-height: calc(100% - 4rem);
+}
+.footer {
+  height: 4rem;
+  background-color: #e2e2e2
+}
